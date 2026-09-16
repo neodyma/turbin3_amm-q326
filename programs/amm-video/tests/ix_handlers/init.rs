@@ -4,41 +4,38 @@ use {
         InstructionData, ToAccountMetas,
     },
     anchor_spl::associated_token::ID as ASSOCIATED_TOKEN_PROGRAM_ID,
-    litesvm::LiteSVM,
     litesvm_token::spl_token::ID as TOKEN_PROGRAM_ID,
-    solana_keypair::Keypair,
     solana_pubkey::Pubkey,
-    solana_signer::Signer,
 };
 
-pub fn create_initialise_ix(
-    mut _svm: &mut LiteSVM,
-    payer: &Keypair,
-    mint_x: Pubkey,
-    mint_y: Pubkey,
-    config: Pubkey,
-    mint_lp: Pubkey,
-    vault_x: Pubkey,
-    vault_y: Pubkey,
-) -> Instruction {
-    let maker = payer.pubkey();
+use super::PoolAccounts;
 
+pub fn create_initialize_ix(
+    initializer: Pubkey,
+    pool: &PoolAccounts,
+    seed: u64,
+    fee: u16,
+    authority: Option<Pubkey>,
+) -> Instruction {
     Instruction::new_with_bytes(
         amm_video::id(),
         &amm_video::instruction::Initialize {
-            seed: 123,
-            fee: 30,
-            authority: Some(maker),
+            seed,
+            fee,
+            authority,
         }
         .data(),
         amm_video::accounts::Initialize {
-            initializer: maker,
-            mint_x,
-            mint_y,
-            mint_lp,
-            vault_x,
-            vault_y,
-            config,
+            initializer,
+            treasury: pool.treasury,
+            mint_x: pool.mint_x,
+            mint_y: pool.mint_y,
+            mint_lp: pool.mint_lp,
+            vault_x: pool.vault_x,
+            vault_y: pool.vault_y,
+            treasury_x: pool.treasury_x,
+            treasury_y: pool.treasury_y,
+            config: pool.config,
             token_program: TOKEN_PROGRAM_ID,
             associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
             system_program: SYSTEM_PROGRAM_ID,

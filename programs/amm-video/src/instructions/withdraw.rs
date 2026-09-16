@@ -1,11 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer},
-};
-use constant_product_curve::ConstantProduct;
+use anchor_spl::token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer};
 
-use crate::{error::AmmError, state::Config};
+use crate::{curve::ConstantProduct, error::AmmError, state::Config};
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -57,8 +53,6 @@ pub struct Withdraw<'info> {
     )]
     pub user_lp: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 impl<'info> Withdraw<'info> {
@@ -71,14 +65,14 @@ impl<'info> Withdraw<'info> {
         require!(!self.config.locked, AmmError::PoolLocked);
         require_neq!(amount, 0, AmmError::InvalidAmount);
 
-        let amounts = ConstantProduct::xy_withdraw_amounts_from_l(
+        require!(amount <= self.user_lp.amount, AmmError::InsufficientBalance);
+
+        let amounts = ConstantProduct::withdraw_amounts(
             self.vault_x.amount,
             self.vault_y.amount,
             self.mint_lp.supply,
             amount,
-            6,
-        )
-        .unwrap();
+        )?;
         let (x, y) = (amounts.x, amounts.y);
 
         require!(x >= min_x && y >= min_y, AmmError::SlippageExceeded);

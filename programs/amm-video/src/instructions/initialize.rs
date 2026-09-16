@@ -4,14 +4,22 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 
-use crate::state::Config;
+use crate::{error::AmmError, state::Config};
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub initializer: Signer<'info>,
+    pub treasury: SystemAccount<'info>,
+    #[account(
+        constraint = mint_x.decimals == 6 @ AmmError::InvalidPrecision,
+    )]
     pub mint_x: Account<'info, Mint>,
+    #[account(
+        constraint = mint_y.decimals == 6 @ AmmError::InvalidPrecision,
+        constraint = mint_y.key() != mint_x.key() @ AmmError::InvalidToken,
+    )]
     pub mint_y: Account<'info, Mint>,
     #[account(
         init,
@@ -37,6 +45,20 @@ pub struct Initialize<'info> {
     )]
     pub vault_y: Account<'info, TokenAccount>,
     #[account(
+        init_if_needed,
+        payer = initializer,
+        associated_token::mint = mint_x,
+        associated_token::authority = treasury,
+    )]
+    pub treasury_x: Account<'info, TokenAccount>,
+    #[account(
+        init_if_needed,
+        payer = initializer,
+        associated_token::mint = mint_y,
+        associated_token::authority = treasury,
+    )]
+    pub treasury_y: Account<'info, TokenAccount>,
+    #[account(
         init,
         payer = initializer,
         seeds = [b"config", seed.to_le_bytes().as_ref()],
@@ -57,11 +79,14 @@ impl<'info> Initialize<'info> {
         authority: Option<Pubkey>,
         bumps: InitializeBumps,
     ) -> Result<()> {
+        require!(fee < 10_000, AmmError::FeePercentErr);
+
         self.config.set_inner(Config {
             seed,
             authority,
             mint_x: self.mint_x.key(),
             mint_y: self.mint_y.key(),
+            treasury: self.treasury.key(),
             fee,
             locked: false,
             config_bump: bumps.config,

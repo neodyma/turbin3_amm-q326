@@ -1,4 +1,7 @@
+#![allow(clippy::diverging_sub_expression)]
+
 pub mod constants;
+pub mod curve;
 pub mod error;
 pub mod instructions;
 pub mod state;
@@ -6,10 +9,11 @@ pub mod state;
 use anchor_lang::prelude::*;
 
 pub use constants::*;
+pub use curve::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6KoUjko5kqLHaF31gdWGBihf8Pw8dUNte2hBpBEJveVe");
+declare_id!("DxJza1TYAGEeARka1DDXJd4PQ62Wa6qhzJFmwsKfWqDa");
 
 #[program]
 pub mod amm_video {
@@ -26,6 +30,10 @@ pub mod amm_video {
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64, max_x: u64, max_y: u64) -> Result<()> {
         ctx.accounts.deposit(amount, max_x, max_y)
+    }
+
+    pub fn set_locked(ctx: Context<SetLocked>, locked: bool) -> Result<()> {
+        ctx.accounts.set_locked(locked)
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64, min_x: u64, min_y: u64) -> Result<()> {

@@ -3,9 +3,8 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer},
 };
-use constant_product_curve::ConstantProduct;
 
-use crate::{error::AmmError, state::Config};
+use crate::{curve::ConstantProduct, error::AmmError, state::Config};
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
@@ -74,16 +73,15 @@ impl<'info> Deposit<'info> {
 
         let (x, y) =
             if self.mint_lp.supply == 0 && self.vault_x.amount == 0 && self.vault_y.amount == 0 {
+                require!(max_x > 0 && max_y > 0, AmmError::InvalidAmount);
                 (max_x, max_y)
             } else {
-                let amounts = ConstantProduct::xy_deposit_amounts_from_l(
+                let amounts = ConstantProduct::deposit_amounts(
                     self.vault_x.amount,
                     self.vault_y.amount,
                     self.mint_lp.supply,
                     amount,
-                    6,
-                )
-                .unwrap();
+                )?;
 
                 require!(
                     amounts.x <= max_x && amounts.y <= max_y,
